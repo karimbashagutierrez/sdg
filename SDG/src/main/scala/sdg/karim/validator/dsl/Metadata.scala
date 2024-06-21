@@ -1,6 +1,6 @@
 package sdg.karim.validator.dsl
 
-import org.apache.spark.sql.functions.explode
+import org.apache.spark.sql.functions.{explode, explode_outer}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import sdg.karim.validator.utils.Constants.{OK_WITH_DATE, VALIDATION, VALIDATION_KO}
 
@@ -35,6 +35,8 @@ case class Metadata(metadataDF: DataFrame)
     metadataDF.select($"dataflows.sinks".getItem(0).as("sinks"))
       .withColumn("sinks", explode($"sinks"))
       .select($"sinks.input", $"sinks.name", $"sinks.topics", $"sinks.paths", $"sinks.format", $"sinks.saveMode")
+      .withColumn("topics", explode_outer($"topics"))
+      .withColumn("paths", explode_outer($"paths"))
   }
 
   def getValidations(sourceName: String, sparkSession: SparkSession): Seq[(String, String, String, String)] = {

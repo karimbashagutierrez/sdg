@@ -3,10 +3,10 @@ package sdg.karim.validator.app
 import org.apache.log4j.{Level, LogManager}
 import org.apache.spark.sql.SparkSession
 import sdg.karim.validator.config.Conf
-import sdg.karim.validator.dsl.Transformations.{getFilteredDF, transformDF}
-import sdg.karim.validator.dsl.{Metadata, Sources}
-import sdg.karim.validator.utils.Utils.getMetadataFile
+import sdg.karim.validator.dsl.Transformations.{addColumnToDF, getFilteredDF, transformDF}
+import sdg.karim.validator.dsl.{Metadata, Sinks, Sources}
 import sdg.karim.validator.utils.Constants._
+import sdg.karim.validator.utils.Utils.getMetadataFile
 
 object SdgValidatorApp {
   def main(args: Array[String]): Unit = {
@@ -29,24 +29,22 @@ object SdgValidatorApp {
           .transform(transformDF(Metadata(metadataDF).getValidations(sourceName, spark), sourceName))
 
         val okDF = validatedDF.transform(getFilteredDF("validated", OK))
-          .transform(transformDF(Metadata(metadataDF).getOk(spark), sourceName))
+          .transform(transformDF(Metadata(metadataDF).getOk(spark), sourceName)).cache
 
         val koDF = validatedDF.transform(getFilteredDF("validated", KO))
-          .transform(transformDF(Metadata(metadataDF).getKo(spark), sourceName))
+          .transform(addColumnToDF("input", VALIDATION_KO))
+          .transform(transformDF(Metadata(metadataDF).getKo(spark), sourceName)).cache
 
-        println(s"validatedDF: ")
-        validatedDF.printSchema
-        validatedDF.show(false)
-        println(s"okDF: ")
-        okDF.printSchema
-        okDF.show(false)
-        println(s"koDF: ")
-        koDF.printSchema
-        koDF.show(false)
-        println(s"sinksDF: ")
-        Metadata(metadataDF).getSinks(spark).printSchema
-        Metadata(metadataDF).getSinks(spark).show(false)
+        Metadata(metadataDF).getSinks(spark).collect.foreach(
+          row => {
+            val sink = Sinks(row.getAs("input"), row.getAs("name"),
+              row.getAs("topics"), row.getAs("paths"),
+              row.getAs("format"), row.getAs("saveMode"))
 
+            sink.persistDFSink(okDF, spark)
+            sink.persistDFSink(koDF, spark)
+          }
+        )
       }
     )
   }
