@@ -1,8 +1,8 @@
 # Prueba SDG
 
-Propuesta d esolución para la prueba técnica de SDG.
+Propuesta de solución para la prueba técnica de SDG.
 
-Aplicación Spark Scala de validación dinámica de datos.
+Aplicación Spark Scala de validación dinámica de datos. (directorio **SDG**)
 
 Arquitectura basada en contenedores de Docker compuesto por un cluster hadoop-spark, un cluster de kafka y airflow como orquestador
 
